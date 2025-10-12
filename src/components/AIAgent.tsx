@@ -1,7 +1,11 @@
 import React from 'react';
 import { MessageSquare, Zap, Brain } from 'lucide-react';
+import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const AIAgent: React.FC = () => {
+  const { elementRef: textRef, isVisible: textVisible } = useScrollAnimation();
+  const { elementRef: imageRef, isVisible: imageVisible } = useScrollAnimation();
+
   return (
     <section id="ai-agent" className="py-20 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-950 to-slate-950"></div>
@@ -9,13 +13,13 @@ const AIAgent: React.FC = () => {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div>
+          <div ref={textRef}>
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/30 rounded-full mb-6">
               <Brain className="w-4 h-4 text-purple-400" />
               <span className="text-purple-300 text-sm font-semibold">Agente IA Conversacional</span>
             </div>
 
-            <h2 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
+            <h2 className={`text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight scroll-reveal ${textVisible ? 'visible' : ''}`}>
               IA que Vende Por Ti
             </h2>
 
@@ -68,9 +72,9 @@ const AIAgent: React.FC = () => {
             </div>
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={imageRef}>
             <div className="absolute -inset-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-3xl blur-2xl"></div>
-            <div className="relative bg-slate-900/50 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.2)]">
+            <div className={`relative bg-slate-900/50 backdrop-blur-xl rounded-2xl p-8 border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.2)] border-shine-slow scroll-reveal ${imageVisible ? 'visible' : ''}`}>
               <img
                 src="/chat.webp"
                 alt="AI Chat Interface"

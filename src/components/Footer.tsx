@@ -1,7 +1,13 @@
 import React from 'react';
 import { Mail, Linkedin, Twitter, Github } from 'lucide-react';
 
-const Footer: React.FC = () => {
+type Page = 'home' | 'terms' | 'privacy' | 'delete-data';
+
+interface FooterProps {
+  setCurrentPage: (page: Page) => void;
+}
+
+const Footer: React.FC<FooterProps> = ({ setCurrentPage }) => {
   const currentYear = new Date().getFullYear();
 
   const scrollToSection = (id: string) => {
@@ -55,7 +61,7 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
           {/* Brand Section */}
           <div className="lg:col-span-2">
-            <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-6">MERGEON</div>
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-6">Mergeon</div>
             <p className="text-gray-300 mb-8 leading-relaxed max-w-md">
               Transformando negocios con automatización inteligente de IA.
               Ayudamos a empresas a optimizar operaciones, aumentar eficiencia y acelerar crecimiento.
@@ -100,14 +106,38 @@ const Footer: React.FC = () => {
         <div className="border-t border-blue-500/20 mt-16 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © {currentYear} MERGEON. Todos los derechos reservados.
+              © {currentYear} Mergeon. Todos los derechos reservados.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <button className="text-gray-400 hover:text-blue-400 text-sm transition-colors duration-200">
+              <button
+                onClick={() => {
+                  setCurrentPage('privacy');
+                  window.location.hash = 'politica-de-privacidad';
+                  window.scrollTo(0, 0);
+                }}
+                className="text-gray-400 hover:text-blue-400 text-sm transition-colors duration-200"
+              >
                 Política de Privacidad
               </button>
-              <button className="text-gray-400 hover:text-blue-400 text-sm transition-colors duration-200">
+              <button
+                onClick={() => {
+                  setCurrentPage('terms');
+                  window.location.hash = 'terminos-y-condiciones';
+                  window.scrollTo(0, 0);
+                }}
+                className="text-gray-400 hover:text-blue-400 text-sm transition-colors duration-200"
+              >
                 Términos y Condiciones
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentPage('delete-data');
+                  window.location.hash = 'delete-data';
+                  window.scrollTo(0, 0);
+                }}
+                className="text-gray-400 hover:text-blue-400 text-sm transition-colors duration-200"
+              >
+                Eliminar Datos
               </button>
             </div>
           </div>

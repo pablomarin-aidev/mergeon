@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Mail, Linkedin, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
 import { ContactForm } from '../types';
+import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const Contact: React.FC = () => {
+  const { elementRef, isVisible } = useScrollAnimation();
   const [form, setForm] = useState<ContactForm>({
     name: '',
     email: '',

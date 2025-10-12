@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Moon, Sun, Menu, X } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 
-const Header: React.FC = () => {
+type Page = 'home' | 'terms' | 'privacy' | 'delete-data';
+
+interface HeaderProps {
+  currentPage: Page;
+  setCurrentPage: (page: Page) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
   const { isDark, toggleTheme } = useTheme();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -17,11 +24,22 @@ const Header: React.FC = () => {
   }, []);
 
   const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setIsMobileMenuOpen(false);
+    if (currentPage !== 'home') {
+      setCurrentPage('home');
+      window.location.hash = '';
+      setTimeout(() => {
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    } else {
+      const element = document.getElementById(id);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
     }
+    setIsMobileMenuOpen(false);
   };
 
   const navItems = [
@@ -46,7 +64,7 @@ const Header: React.FC = () => {
             className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent cursor-pointer"
             onClick={() => scrollToSection('hero')}
           >
-            MERGEON
+            Mergeon
           </div>
 
           {/* Desktop Navigation */}

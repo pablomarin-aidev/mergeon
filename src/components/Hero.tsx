@@ -1,7 +1,10 @@
 import React from 'react';
 import { ArrowRight, Play } from 'lucide-react';
+import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const Hero: React.FC = () => {
+  const { elementRef, isVisible } = useScrollAnimation();
+
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
@@ -33,7 +36,7 @@ const Hero: React.FC = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <button
               onClick={() => scrollToSection('contact')}
-              className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center gap-2 shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:shadow-[0_0_40px_rgba(147,51,234,0.6)] transform hover:-translate-y-0.5"
+              className="group relative bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 flex items-center gap-2 shadow-[0_0_30px_rgba(59,130,246,0.5)] hover:shadow-[0_0_40px_rgba(147,51,234,0.6)] transform hover:-translate-y-0.5 border-shine"
             >
               Reserva un Demo
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
@@ -48,8 +51,8 @@ const Hero: React.FC = () => {
             </button>
           </div>
 
-          <div className="relative">
-            <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-3xl p-8 backdrop-blur-xl border border-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.2)]">
+          <div className="relative" ref={elementRef}>
+            <div className={`bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-3xl p-8 backdrop-blur-xl border border-blue-500/20 shadow-[0_0_50px_rgba(59,130,246,0.2)] border-shine-slow scroll-reveal ${isVisible ? 'visible' : ''}`}>
               <img
                 src="/panel_general_users.webp"
                 alt="Mergeon Manager Dashboard"
