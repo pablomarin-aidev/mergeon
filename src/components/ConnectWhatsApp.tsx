@@ -26,12 +26,6 @@ declare global {
   }
 }
 
-interface WhatsAppData {
-  accessToken: string;
-  phoneNumberId: string;
-  wabaId: string;
-  businessName: string;
-}
 
 const ConnectWhatsApp: React.FC = () => {
   const { elementRef, isVisible } = useScrollAnimation();
@@ -39,28 +33,83 @@ const ConnectWhatsApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
-
+  const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [sdkResponse, setSdkResponse] = useState<any>(null);
+  // Escuchar el evento 'message' para Embedded Signup
   useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
+        return;
+      }
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          if (data.event === 'FINISH') {
+            // Usuario terminó el registro embebido
+            setIsConnected(true);
+            setSessionInfo(data.data);
+          } else if (data.event === 'CANCEL') {
+            setError(`Cancelado en el paso: ${data.data.current_step}`);
+          } else if (data.event === 'ERROR') {
+            setError(`Error: ${data.data.error_message}`);
+          }
+        }
+        setSessionInfo(data);
+      } catch {
+        // No JSON
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+  // Callback de login de Facebook
+  const fbLoginCallback = (response: any) => {
+    setSdkResponse(response);
+    if (response.authResponse) {
+      // Aquí puedes enviar el código al backend para obtener el access token
+      // const code = response.authResponse.code;
+    }
+  };
+
+  // Lanzar Embedded Signup
+  const launchWhatsAppSignup = () => {
+    if (!sdkLoaded || !window.FB) {
+      setError('El SDK de Facebook no está disponible.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    window.FB.login(fbLoginCallback, {
+      config_id: '1526038345083724', // Reemplaza con tu config_id real
+      response_type: 'code',
+      override_default_response_type: true,
+    });
+    setIsLoading(false);
+  };
+
+  // Cargar el SDK de Facebook solo una vez
+  useEffect(() => {
+    // Evitar cargar el script varias veces
+    if (document.getElementById('facebook-jssdk')) {
+      setSdkLoaded(true);
+      return;
+    }
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId: '1129979435402896',
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: 'v24.0',
+      });
+      setSdkLoaded(true);
+    };
     const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
     script.src = 'https://connect.facebook.net/en_US/sdk.js';
     script.async = true;
     script.defer = true;
     script.crossOrigin = 'anonymous';
-
-    script.onload = () => {
-      window.fbAsyncInit = function() {
-        window.FB.init({
-          appId: '9153316638057244',
-          autoLogAppEvents: true,
-          xfbml: true,
-          version: 'v21.0'
-        });
-        setSdkLoaded(true);
-      };
-    };
-
     document.body.appendChild(script);
-
     return () => {
       if (document.body.contains(script)) {
         document.body.removeChild(script);
@@ -68,61 +117,6 @@ const ConnectWhatsApp: React.FC = () => {
     };
   }, []);
 
-  const handleConnectWhatsApp = () => {
-    if (!sdkLoaded || !window.FB) {
-      setError('El SDK de Facebook no está disponible. Por favor, recarga la página.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    window.FB.login(
-      async (response) => {
-        if (response.status === 'connected' && response.authResponse) {
-          try {
-            const accessToken = response.authResponse.accessToken;
-
-            const backendUrl = import.meta.env.VITE_BACKEND_ROUTER_URL || 'http://localhost:8000/';
-            const endpoint = `${backendUrl.replace(/\/$/, '')}/api/whatsapp/connect`;
-
-            const whatsappData: WhatsAppData = {
-              accessToken: accessToken,
-              phoneNumberId: 'pending',
-              wabaId: 'pending',
-              businessName: 'pending'
-            };
-
-            const result = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(whatsappData),
-            });
-
-            if (result.ok) {
-              setIsConnected(true);
-              setIsLoading(false);
-            } else {
-              throw new Error('Error al conectar con el servidor');
-            }
-          } catch (err) {
-            setError('Hubo un error al procesar la conexión. Por favor, intenta nuevamente.');
-            setIsLoading(false);
-          }
-        } else {
-          setError('No se pudo completar la conexión. Por favor, intenta nuevamente.');
-          setIsLoading(false);
-        }
-      },
-      {
-        config_id: '1568007964127158',
-        response_type: 'code',
-        override_default_response_type: true,
-      }
-    );
-  };
 
   const requirements = [
     {
@@ -220,9 +214,10 @@ const ConnectWhatsApp: React.FC = () => {
             </div>
           )}
 
-          <div className="text-center">
+          <div className="flex flex-col items-center justify-center gap-6 mt-8">
+            {/* Botón Embedded Signup WhatsApp/Meta */}
             <button
-              onClick={handleConnectWhatsApp}
+              onClick={launchWhatsAppSignup}
               disabled={isLoading || !sdkLoaded}
               className="group relative bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white px-12 py-5 rounded-xl font-semibold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:shadow-[0_0_40px_rgba(34,197,94,0.6)] transform hover:-translate-y-0.5 border-shine"
             >
@@ -232,21 +227,33 @@ const ConnectWhatsApp: React.FC = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Conectando...
+                  Iniciando registro embebido...
                 </span>
               ) : !sdkLoaded ? (
-                'Cargando...'
+                'Cargando SDK de Meta...'
               ) : (
                 <span className="flex items-center gap-3">
                   <Phone className="w-5 h-5" />
-                  Conectar mi cuenta
+                  Registrar WhatsApp Business
                 </span>
               )}
             </button>
-
-            <p className="text-sm text-gray-400 mt-6">
-              Al hacer clic, serás redirigido a Facebook para autorizar la conexión
+            <p className="text-sm text-gray-400 text-center max-w-md">
+              Al hacer clic, se abrirá el registro embebido de WhatsApp Business vía Meta/Facebook.
             </p>
+            {/* Mostrar respuesta de sesión y SDK */}
+            {sessionInfo && (
+              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-green-500/20">
+                <h3 className="text-green-400 font-bold mb-2">Session info response:</h3>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap">{JSON.stringify(sessionInfo, null, 2)}</pre>
+              </div>
+            )}
+            {sdkResponse && (
+              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-blue-500/20">
+                <h3 className="text-blue-400 font-bold mb-2">SDK response:</h3>
+                <pre className="text-xs text-gray-200 whitespace-pre-wrap">{JSON.stringify(sdkResponse, null, 2)}</pre>
+              </div>
+            )}
           </div>
 
           <div className="mt-12 p-6 bg-blue-500/5 border border-blue-500/20 rounded-xl">
