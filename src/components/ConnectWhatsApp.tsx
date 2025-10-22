@@ -241,17 +241,17 @@ const ConnectWhatsApp: React.FC = () => {
             <p className="text-sm text-gray-400 text-center max-w-md">
               Al hacer clic, se abrirá el registro embebido de WhatsApp Business vía Meta/Facebook.
             </p>
-            {/* Mostrar respuesta de sesión y SDK */}
-            {sessionInfo && (
-              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-green-500/20">
-                <h3 className="text-green-400 font-bold mb-2">Session info response:</h3>
-                <pre className="text-xs text-gray-200 whitespace-pre-wrap">{JSON.stringify(sessionInfo, null, 2)}</pre>
+            {/* Mostrar solo el estado relevante al usuario */}
+            {isConnected && sessionInfo && (
+              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-green-500/20 text-center">
+                <h3 className="text-green-400 font-bold mb-2">¡Conexión exitosa!</h3>
+                <p className="text-gray-200 text-base">Tu cuenta de WhatsApp Business fue conectada correctamente.</p>
               </div>
             )}
-            {sdkResponse && (
-              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-blue-500/20">
-                <h3 className="text-blue-400 font-bold mb-2">SDK response:</h3>
-                <pre className="text-xs text-gray-200 whitespace-pre-wrap">{JSON.stringify(sdkResponse, null, 2)}</pre>
+            {error && (
+              <div className="w-full max-w-xl bg-red-900/80 rounded-xl p-4 mt-4 border border-red-500/20 text-center">
+                <h3 className="text-red-400 font-bold mb-2">Hubo un problema</h3>
+                <p className="text-gray-200 text-base">{error}</p>
               </div>
             )}
           </div>
