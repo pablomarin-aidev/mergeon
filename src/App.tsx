@@ -13,8 +13,9 @@ import Footer from './components/Footer';
 import TermsConditions from './components/TermsConditions';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import DeleteData from './components/DeleteData';
+import ConnectWhatsApp from './components/ConnectWhatsApp';
 
-type Page = 'home' | 'terms' | 'privacy' | 'delete-data';
+type Page = 'home' | 'terms' | 'privacy' | 'delete-data' | 'connect-whatsapp';
 
 function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
@@ -28,6 +29,8 @@ function App() {
         setCurrentPage('privacy');
       } else if (hash === 'delete-data') {
         setCurrentPage('delete-data');
+      } else if (hash === 'connect-whatsapp') {
+        setCurrentPage('connect-whatsapp');
       } else {
         setCurrentPage('home');
       }
@@ -51,6 +54,8 @@ function App() {
         return <PrivacyPolicy />;
       case 'delete-data':
         return <DeleteData />;
+      case 'connect-whatsapp':
+        return <ConnectWhatsApp />;
       default:
         return (
           <main>
