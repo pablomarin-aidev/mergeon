@@ -36,51 +36,97 @@ const ConnectWhatsApp: React.FC = () => {
   const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [sdkResponse, setSdkResponse] = useState<any>(null);
   // Escuchar el evento 'message' para Embedded Signup
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
-        return;
-      }
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP') {
-          if (data.event === 'FINISH') {
-            // Usuario terminó el registro embebido
-            setIsConnected(true);
-            setSessionInfo(data.data);
-            // Enviar code y waba_id al backend
-            const code = data.data.code;
-            const waba_id = data.data.waba_id;
-            try {
-              const backendUrl = import.meta.env.VITE_REGISTER_URL;
-              const apiKey = import.meta.env.VITE_API_KEY_AUTH;
-              await fetch(backendUrl, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'api-key-auth': apiKey,
-                },
-                body: JSON.stringify({ code, waba_id }),
-              });
-              // Mostrar log con parte del code
-              console.log('datos enviados', code ? code.substring(0, 6) : '');
-            } catch (err) {
-              setError('No se pudo enviar la activación al backend.');
-            }
-          } else if (data.event === 'CANCEL') {
-            setError(`Cancelado en el paso: ${data.data.current_step}`);
-          } else if (data.event === 'ERROR') {
-            setError(`Error: ${data.data.error_message}`);
+ useEffect(() => {
+  const handleMessage = async (event: MessageEvent) => {
+    // Dominios válidos desde los que Meta puede enviar mensajes
+    const allowedOrigins = [
+      "https://www.facebook.com",
+      "https://web.facebook.com",
+      "https://business.facebook.com",
+      "https://apps.facebook.com",
+      "https://www.messenger.com",
+    ];
+
+    // Ignorar mensajes de otros orígenes
+    if (!allowedOrigins.includes(event.origin)) return;
+
+    // Intentar parsear el mensaje
+    let data: any;
+    try {
+      data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+    } catch {
+      return; // ignorar mensajes no JSON
+    }
+
+    // Verificar que sea el evento correcto
+    if (data?.type !== "WA_EMBEDDED_SIGNUP") return;
+
+    try {
+      switch (data.event) {
+        case "FINISH": {
+          setIsConnected(true);
+          setSessionInfo(data.data);
+          setIsLoading(true);
+
+          const code = data.data?.code;
+          const waba_id = data.data?.waba_id;
+
+          if (!code || !waba_id) {
+            setError("Faltan datos en la respuesta de Meta.");
+            setIsLoading(false);
+            return;
           }
+
+          // Enviar datos al backend
+          try {
+            const backendUrl = import.meta.env.VITE_REGISTER_URL;
+            const apiKey = import.meta.env.VITE_API_KEY_AUTH;
+
+            const res = await fetch(backendUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "api-key-auth": apiKey,
+              },
+              body: JSON.stringify({ code, waba_id }),
+            });
+
+            if (!res.ok) throw new Error("Error al comunicar con el backend.");
+
+            // Log controlado: visible solo en éxito
+            console.info("✅ Registro exitoso:", {
+              waba_id,
+              codeFragment: code.substring(0, 6),
+            });
+          } catch (err) {
+            console.error("❌ Error enviando al backend:", err);
+            setError("No se pudo enviar la activación al backend.");
+          } finally {
+            setIsLoading(false);
+          }
+          break;
         }
-        setSessionInfo(data);
-      } catch {
-        // No JSON
+
+        case "CANCEL":
+          setError(`Registro cancelado en el paso: ${data.data?.current_step || "desconocido"}`);
+          break;
+
+        case "ERROR":
+          setError(`Error durante el registro: ${data.data?.error_message || "desconocido"}`);
+          break;
+
+        default:
+          break;
       }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+    } catch (err) {
+      console.error("❌ Error procesando evento de Meta:", err);
+    }
+  };
+
+  window.addEventListener("message", handleMessage);
+  return () => window.removeEventListener("message", handleMessage);
+}, []);
+
   // Callback de login de Facebook
   const fbLoginCallback = (response: any) => {
     setSdkResponse(response);
