@@ -56,7 +56,11 @@ const ConnectWhatsApp: React.FC = () => {
       data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
       console.log('[Meta] Data parseada:', data?.type);
     } catch {
-      console.log('[Meta] Mensaje no es JSON');
+      // Log del mensaje recibido aunque no sea JSON
+      console.log('[Meta] Mensaje no es JSON, contenido:', {
+        type: typeof event.data,
+        value: event.data
+      });
       return;
     }
     if (data?.type !== "WA_EMBEDDED_SIGNUP") {
