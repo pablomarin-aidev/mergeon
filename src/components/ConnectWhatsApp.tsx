@@ -45,6 +45,7 @@ const ConnectWhatsApp: React.FC = () => {
       "https://business.facebook.com",
       "https://apps.facebook.com",
       "https://www.messenger.com",
+      "https://www.mergeon.dev"
     ];
     if (!allowedOrigins.includes(event.origin)) {
       console.log('[Meta] Origen no permitido:', event.origin);
