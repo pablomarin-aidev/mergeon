@@ -52,8 +52,8 @@ const ConnectWhatsApp: React.FC = () => {
             const code = data.data.code;
             const waba_id = data.data.waba_id;
             try {
-              const backendUrl = import.meta.env.VITE_REGISTER_URL || process.env.REGISTER_URL;
-              const apiKey = import.meta.env.VITE_API_KEY_AUTH || process.env.API_KEY_AUTH;
+              const backendUrl = import.meta.env.VITE_REGISTER_URL;
+              const apiKey = import.meta.env.VITE_API_KEY_AUTH;
               await fetch(backendUrl, {
                 method: 'POST',
                 headers: {
@@ -62,6 +62,8 @@ const ConnectWhatsApp: React.FC = () => {
                 },
                 body: JSON.stringify({ code, waba_id }),
               });
+              // Mostrar log con parte del code
+              console.log('datos enviados', code ? code.substring(0, 6) : '');
             } catch (err) {
               setError('No se pudo enviar la activación al backend.');
             }
