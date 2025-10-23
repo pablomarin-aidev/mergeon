@@ -38,7 +38,7 @@ const ConnectWhatsApp: React.FC = () => {
   // Escuchar el evento 'message' para Embedded Signup
  useEffect(() => {
   const handleMessage = async (event: MessageEvent) => {
-    // Dominios válidos desde los que Meta puede enviar mensajes
+    console.log('[Meta] Mensaje recibido:', event.origin);
     const allowedOrigins = [
       "https://www.facebook.com",
       "https://web.facebook.com",
@@ -46,42 +46,41 @@ const ConnectWhatsApp: React.FC = () => {
       "https://apps.facebook.com",
       "https://www.messenger.com",
     ];
-
-    // Ignorar mensajes de otros orígenes
-    if (!allowedOrigins.includes(event.origin)) return;
-
-    // Intentar parsear el mensaje
+    if (!allowedOrigins.includes(event.origin)) {
+      console.log('[Meta] Origen no permitido:', event.origin);
+      return;
+    }
     let data: any;
     try {
       data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+      console.log('[Meta] Data parseada:', data?.type);
     } catch {
-      return; // ignorar mensajes no JSON
+      console.log('[Meta] Mensaje no es JSON');
+      return;
     }
-
-    // Verificar que sea el evento correcto
-    if (data?.type !== "WA_EMBEDDED_SIGNUP") return;
-
+    if (data?.type !== "WA_EMBEDDED_SIGNUP") {
+      console.log('[Meta] Tipo de evento no es WA_EMBEDDED_SIGNUP:', data?.type);
+      return;
+    }
     try {
       switch (data.event) {
         case "FINISH": {
+          console.log('[Meta] Evento FINISH recibido');
           setIsConnected(true);
           setSessionInfo(data.data);
           setIsLoading(true);
-
           const code = data.data?.code;
           const waba_id = data.data?.waba_id;
-
           if (!code || !waba_id) {
+            console.warn('[Meta] Faltan datos en la respuesta de Meta');
             setError("Faltan datos en la respuesta de Meta.");
             setIsLoading(false);
             return;
           }
-
-          // Enviar datos al backend
           try {
             const backendUrl = import.meta.env.VITE_REGISTER_URL;
             const apiKey = import.meta.env.VITE_API_KEY_AUTH;
-
+            console.log('[Meta] Enviando datos al backend...');
             const res = await fetch(backendUrl, {
               method: "POST",
               headers: {
@@ -90,36 +89,30 @@ const ConnectWhatsApp: React.FC = () => {
               },
               body: JSON.stringify({ code, waba_id }),
             });
-
             if (!res.ok) throw new Error("Error al comunicar con el backend.");
-
-            // Log controlado: visible solo en éxito
-            console.info("✅ Registro exitoso:", {
-              waba_id,
-              codeFragment: code.substring(0, 6),
-            });
+            console.info('[Meta] ✅ Datos enviados:', code.substring(0, 6));
           } catch (err) {
-            console.error("❌ Error enviando al backend:", err);
+            console.error('[Meta] ❌ Error enviando al backend:', err);
             setError("No se pudo enviar la activación al backend.");
           } finally {
             setIsLoading(false);
           }
           break;
         }
-
         case "CANCEL":
+          console.log('[Meta] Evento CANCEL recibido');
           setError(`Registro cancelado en el paso: ${data.data?.current_step || "desconocido"}`);
           break;
-
         case "ERROR":
+          console.log('[Meta] Evento ERROR recibido');
           setError(`Error durante el registro: ${data.data?.error_message || "desconocido"}`);
           break;
-
         default:
+          console.log('[Meta] Evento desconocido:', data.event);
           break;
       }
     } catch (err) {
-      console.error("❌ Error procesando evento de Meta:", err);
+      console.error('[Meta] ❌ Error procesando evento de Meta:', err);
     }
   };
 
