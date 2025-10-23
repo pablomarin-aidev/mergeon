@@ -37,7 +37,7 @@ const ConnectWhatsApp: React.FC = () => {
   const [sdkResponse, setSdkResponse] = useState<any>(null);
   // Escuchar el evento 'message' para Embedded Signup
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") {
         return;
       }
@@ -48,6 +48,23 @@ const ConnectWhatsApp: React.FC = () => {
             // Usuario terminó el registro embebido
             setIsConnected(true);
             setSessionInfo(data.data);
+            // Enviar code y waba_id al backend
+            const code = data.data.code;
+            const waba_id = data.data.waba_id;
+            try {
+              const backendUrl = import.meta.env.VITE_REGISTER_URL || process.env.REGISTER_URL;
+              const apiKey = import.meta.env.VITE_API_KEY_AUTH || process.env.API_KEY_AUTH;
+              await fetch(backendUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'api-key-auth': apiKey,
+                },
+                body: JSON.stringify({ code, waba_id }),
+              });
+            } catch (err) {
+              setError('No se pudo enviar la activación al backend.');
+            }
           } else if (data.event === 'CANCEL') {
             setError(`Cancelado en el paso: ${data.data.current_step}`);
           } else if (data.event === 'ERROR') {
