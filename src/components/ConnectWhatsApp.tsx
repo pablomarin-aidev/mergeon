@@ -61,6 +61,22 @@ const ConnectWhatsApp: React.FC = () => {
         type: typeof event.data,
         value: event.data
       });
+      // Si el string contiene "code=", extraerlo y enviarlo como query param
+      if (typeof event.data === 'string' && event.data.includes('code=')) {
+        const codeMatch = event.data.match(/code=([^&]+)/);
+        const code = codeMatch ? codeMatch[1] : null;
+        if (code) {
+          console.log('[Meta] Code extraído del string:', code.substring(0, 6));
+          // Enviar el code como query param
+          const callbackUrl = `https://mergeon-router.onrender.com/auth/callback?code=${encodeURIComponent(code)}`;
+          try {
+            await fetch(callbackUrl, { method: 'GET' });
+            console.log('[Meta] Code enviado a callback:', callbackUrl);
+          } catch (err) {
+            console.error('[Meta] Error enviando code a callback:', err);
+          }
+        }
+      }
       return;
     }
     if (data?.type !== "WA_EMBEDDED_SIGNUP") {
