@@ -54,7 +54,7 @@ const ConnectWhatsApp: React.FC = () => {
     let data: any;
     try {
       data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-      console.log('[Meta] Data parseada:', data?.type);
+      console.log('[Meta] Data parseada:', data?.type, data);
     } catch {
       // Log del mensaje recibido aunque no sea JSON
       console.log('[Meta] Mensaje no es JSON, contenido:', {
@@ -70,14 +70,14 @@ const ConnectWhatsApp: React.FC = () => {
     try {
       switch (data.event) {
         case "FINISH": {
-          console.log('[Meta] Evento FINISH recibido');
+          console.log('[Meta] Evento FINISH recibido, objeto completo:', data);
           setIsConnected(true);
           setSessionInfo(data.data);
           setIsLoading(true);
           const code = data.data?.code;
           const waba_id = data.data?.waba_id;
           if (!code || !waba_id) {
-            console.warn('[Meta] Faltan datos en la respuesta de Meta');
+            console.warn('[Meta] Faltan datos en la respuesta de Meta. data.data:', data.data);
             setError("Faltan datos en la respuesta de Meta.");
             setIsLoading(false);
             return;
