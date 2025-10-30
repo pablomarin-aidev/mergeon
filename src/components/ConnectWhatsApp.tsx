@@ -94,28 +94,27 @@ const ConnectWhatsApp: React.FC = () => {
 }, [sessionInfo]);
 
 
-  // Callback de login de Facebook
+  // ✅ 1. Primero el callback
   const fbLoginCallback = (response: any) => {
-  if (response.authResponse) {
-    const code = response.authResponse.code;
-    console.log('response: ', code); // remove after testing
-    // your code goes here
-  } else {
-    console.log('response: ', response); // remove after testing
-    // your code goes here
-  }
+    if (response.authResponse) {
+      const code = response.authResponse.code;
+      console.log("response: ", code);
+    } else {
+      console.log("response: ", response);
+    }
+  };
 
-  // Lanzar Embedded Signup
+  // ✅ 2. Luego, por fuera, el launcher del signup
   const launchWhatsAppSignup = () => {
     if (!sdkLoaded || !window.FB) {
-      setError('El SDK de Facebook no está disponible.');
+      setError("El SDK de Facebook no está disponible.");
       return;
     }
     setIsLoading(true);
     setError(null);
     window.FB.login(fbLoginCallback, {
-      config_id: '1526038345083724', // Reemplaza con tu config_id real
-      response_type: 'code',
+      config_id: "1526038345083724", // tu config_id
+      response_type: "code",
       override_default_response_type: true,
     });
     setIsLoading(false);
@@ -307,5 +306,6 @@ const ConnectWhatsApp: React.FC = () => {
     </div>
   );
 };
-};
+
+
 export default ConnectWhatsApp;
