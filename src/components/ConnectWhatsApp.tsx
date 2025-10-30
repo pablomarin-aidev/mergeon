@@ -95,11 +95,12 @@ const ConnectWhatsApp: React.FC = () => {
 
   useEffect(() => {
     if (code && wabaId) {
-      console.log("Enviando a /auth/register:", { code, waba_id: wabaId });
+      console.log("Enviando a /auth/register:", { code, waba_id: wabaId, redirect_uri: window.location.href });
+
       fetch("https://mergeon-router.onrender.com/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, waba_id: wabaId }),
+        body: JSON.stringify({ code, waba_id: wabaId, redirect_uri: window.location.href}),
       })
         .then((res) => res.json())
         .then(() => {
