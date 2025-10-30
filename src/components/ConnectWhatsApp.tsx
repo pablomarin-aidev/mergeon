@@ -36,90 +36,118 @@ const ConnectWhatsApp: React.FC = () => {
   const [sessionInfo, setSessionInfo] = useState<any>(null);
   const [sdkResponse, setSdkResponse] = useState<any>(null);
   // Escuchar el evento 'message' para Embedded Signup
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      const allowedOrigins = [
-        "https://www.facebook.com",
-        "https://web.facebook.com",
-        "https://business.facebook.com",
-        "https://apps.facebook.com",
-        "https://www.messenger.com",
-      ];
-      if (!allowedOrigins.includes(event.origin)) return;
+ useEffect(() => {
+  const handleMessage = async (event: MessageEvent) => {
+    const allowedOrigins = [
+      "https://www.facebook.com",
+      "https://web.facebook.com",
+      "https://business.facebook.com",
+      "https://apps.facebook.com",
+      "https://www.messenger.com",
+      "https://www.mergeon.dev"
+    ];
+    if (!allowedOrigins.includes(event.origin)) return;
 
-      try {
-        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        // ✅ Meta finaliza el registro embebido
-        if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH") {
-          console.log("[Meta] Registro finalizado:", data.data);
-          setSessionInfo({ waba_id: data.data?.waba_id });
-          setIsConnected(true);
-          alert("✅ Conexión completada con éxito. Meta enviará el code al backend.");
+    let data: any;
+    try {
+      data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+    } catch {
+      // Si no es JSON, puede ser el querystring con el code
+      if (typeof event.data === "string" && event.data.includes("code=")) {
+        const codeMatch = event.data.match(/code=([^&]+)/);
+        const code = codeMatch ? codeMatch[1] : null;
+        if (code) {
+          console.log("[Meta] Code recibido:", code);
+          const backendUrl = "https://mergeon-router.onrender.com/auth/register";
+          try {
+            const res = await fetch(backendUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code,
+                waba_id: sessionInfo?.waba_id || "" // 👈 usa el que ya se guardó
+              }),
+            });
+            const result = await res.json();
+            if (result.status === "ok") {
+              alert("¡Conexión exitosa!");
+              setIsConnected(true);
+              window.close();
+            } else setError("Error en el registro: " + (result.message || ""));
+          } catch {
+            setError("No se pudo enviar la activación al backend.");
+          }
         }
-      } catch (err) {
-        console.warn("Evento no JSON recibido:", event.data);
       }
-    };
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
+      return;
+    }
+
+    // Si es un evento Embedded Signup normal
+    if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH") {
+      console.log("[Meta] WABA recibida:", data.data);
+      setSessionInfo({ waba_id: data.data?.waba_id });
+    }
+  };
+
+  window.addEventListener("message", handleMessage);
+  return () => window.removeEventListener("message", handleMessage);
+}, [sessionInfo]);
 
 
   // Callback de login de Facebook
   const fbLoginCallback = (response: any) => {
-    setSdkResponse(response);
-    if (response.authResponse) {
-      // Aquí puedes enviar el código al backend para obtener el access token
-      // const code = response.authResponse.code;
-    }
-  };
+  if (response.authResponse) {
+    const code = response.authResponse.code;
+    console.log('response: ', code); // remove after testing
+    // your code goes here
+  } else {
+    console.log('response: ', response); // remove after testing
+    // your code goes here
+  }
 
   // Lanzar Embedded Signup
   const launchWhatsAppSignup = () => {
     if (!sdkLoaded || !window.FB) {
-      setError("El SDK de Facebook no está disponible.");
+      setError('El SDK de Facebook no está disponible.');
       return;
     }
-
     setIsLoading(true);
     setError(null);
-
     window.FB.login(fbLoginCallback, {
-      config_id: "1526038345083724", // tu config_id real de Meta
-      response_type: "code",
+      config_id: '1526038345083724', // Reemplaza con tu config_id real
+      response_type: 'code',
       override_default_response_type: true,
-      redirect_uri: "https://mergeon-router.onrender.com/auth/callback", // 👈 aquí llega el code
     });
-
     setIsLoading(false);
   };
 
   // Cargar el SDK de Facebook solo una vez
   useEffect(() => {
-    if (document.getElementById("facebook-jssdk")) {
+    // Evitar cargar el script varias veces
+    if (document.getElementById('facebook-jssdk')) {
       setSdkLoaded(true);
       return;
     }
-
-    window.fbAsyncInit = function () {
+    window.fbAsyncInit = function() {
       window.FB.init({
-        appId: "1129979435402896", // tu appId
+        appId: '1129979435402896',
         autoLogAppEvents: true,
         xfbml: true,
-        version: "v24.0",
+        version: 'v24.0',
       });
       setSdkLoaded(true);
     };
-
-    const script = document.createElement("script");
-    script.id = "facebook-jssdk";
-    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
     script.async = true;
     script.defer = true;
+    script.crossOrigin = 'anonymous';
     document.body.appendChild(script);
-
     return () => {
-      if (document.body.contains(script)) document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
