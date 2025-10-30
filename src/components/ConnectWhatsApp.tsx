@@ -94,7 +94,7 @@ const ConnectWhatsApp: React.FC = () => {
   ];
 
   useEffect(() => {
-    const redirect_uri = "https://www.mergeon.dev";
+    const redirect_uri = "https://www.mergeon.dev/";
     if (code && wabaId) {
       console.log("Enviando a /auth/register:", { code, waba_id: wabaId, redirect_uri: redirect_uri });
 
