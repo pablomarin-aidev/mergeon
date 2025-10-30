@@ -1,128 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Phone, Shield, FileCheck, AlertCircle } from 'lucide-react';
-import { useScrollAnimation } from '../hooks/useScrollAnimation';
-
+import { Phone, Shield, FileCheck } from 'lucide-react';
+// Declaración global para FB y fbAsyncInit
 declare global {
   interface Window {
-    fbAsyncInit: () => void;
-    FB: {
-      init: (params: {
-        appId: string;
-        autoLogAppEvents: boolean;
-        xfbml: boolean;
-        version: string;
-      }) => void;
-      login: (
-        callback: (response: {
-          status: string;
-          authResponse?: {
-            accessToken: string;
-            code?: string;
-          };
-        }) => void,
-        options: { config_id: string; response_type: string; override_default_response_type: boolean }
-      ) => void;
-    };
+    FB: any;
+    fbAsyncInit: any;
   }
 }
-
+import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
 const ConnectWhatsApp: React.FC = () => {
   const { elementRef, isVisible } = useScrollAnimation();
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
+  const [wabaId, setWabaId] = useState<string | null>(null);
   const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [sessionInfo, setSessionInfo] = useState<any>(null);
-  const [sdkResponse, setSdkResponse] = useState<any>(null);
+  const [status, setStatus] = useState<string>("");
   // Escuchar el evento 'message' para Embedded Signup
- useEffect(() => {
-  const handleMessage = async (event: MessageEvent) => {
-    const allowedOrigins = [
-      "https://www.facebook.com",
-      "https://web.facebook.com",
-      "https://business.facebook.com",
-      "https://apps.facebook.com",
-      "https://www.messenger.com",
-      "https://www.mergeon.dev"
-    ];
-    if (!allowedOrigins.includes(event.origin)) return;
-
-    let data: any;
-    try {
-      data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-    } catch {
-      // Si no es JSON, puede ser el querystring con el code
-      if (typeof event.data === "string" && event.data.includes("code=")) {
-        const codeMatch = event.data.match(/code=([^&]+)/);
-        const code = codeMatch ? codeMatch[1] : null;
-        if (code) {
-          console.log("[Meta] Code recibido:", code);
-          const backendUrl = "https://mergeon-router.onrender.com/auth/register";
-          try {
-            const res = await fetch(backendUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                code,
-                waba_id: sessionInfo?.waba_id || "" // 👈 usa el que ya se guardó
-              }),
-            });
-            const result = await res.json();
-            if (result.status === "ok") {
-              alert("¡Conexión exitosa!");
-              setIsConnected(true);
-              window.close();
-            } else setError("Error en el registro: " + (result.message || ""));
-          } catch {
-            setError("No se pudo enviar la activación al backend.");
-          }
-        }
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      let data: any;
+      try {
+        data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+      } catch {
+        data = event.data;
       }
-      return;
-    }
-
-    // Si es un evento Embedded Signup normal
-    if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH") {
-      console.log("[Meta] WABA recibida:", data.data);
-      setSessionInfo({ waba_id: data.data?.waba_id });
-    }
-  };
-
-  window.addEventListener("message", handleMessage);
-  return () => window.removeEventListener("message", handleMessage);
-}, [sessionInfo]);
+      if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH" && data.data?.waba_id) {
+        setWabaId(data.data.waba_id);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
 
-  // ✅ 1. Primero el callback
+  // Meta callback
   const fbLoginCallback = (response: any) => {
-    if (response.authResponse) {
-      const code = response.authResponse.code;
-      console.log("response: ", code);
-    } else {
-      console.log("response: ", response);
+    if (response?.authResponse?.code) {
+      setCode(response.authResponse.code);
     }
   };
 
-  // ✅ 2. Luego, por fuera, el launcher del signup
   const launchWhatsAppSignup = () => {
-    if (!sdkLoaded || !window.FB) {
-      setError("El SDK de Facebook no está disponible.");
-      return;
-    }
-    setIsLoading(true);
-    setError(null);
+    if (!sdkLoaded || !window.FB) return;
     window.FB.login(fbLoginCallback, {
-      config_id: "1526038345083724", // tu config_id
+      config_id: "1526038345083724",
       response_type: "code",
       override_default_response_type: true,
     });
-    setIsLoading(false);
   };
 
-  // Cargar el SDK de Facebook solo una vez
   useEffect(() => {
-    // Evitar cargar el script varias veces
     if (document.getElementById('facebook-jssdk')) {
       setSdkLoaded(true);
       return;
@@ -166,31 +93,22 @@ const ConnectWhatsApp: React.FC = () => {
     },
   ];
 
-  if (isConnected) {
-    return (
-      <div className="min-h-screen bg-slate-950 pt-24 pb-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="inline-flex items-center justify-center w-24 h-24 bg-green-500/10 rounded-full mb-6 border-2 border-green-500/30">
-              <CheckCircle className="w-12 h-12 text-green-400" />
-            </div>
-            <h1 className="text-4xl font-bold text-white mb-6">
-              ¡Conexión Exitosa!
-            </h1>
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              ✅ Tu cuenta fue conectada correctamente. ¡Ya puedes comenzar a usar tu WhatsApp en la nube!
-            </p>
-            <button
-              onClick={() => window.location.href = '/'}
-              className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(34,197,94,0.5)]"
-            >
-              Volver al Inicio
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (code && wabaId) {
+      fetch("https://mergeon-router.onrender.com/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, waba_id: wabaId }),
+      })
+        .then((res) => res.json())
+        .then(() => {
+          setStatus("¡Registro exitoso!");
+        })
+        .catch(() => {
+          setStatus("Error en el registro");
+        });
+    }
+  }, [code, wabaId]);
 
   return (
     <div className="min-h-screen bg-slate-950 pt-24 pb-16">
@@ -201,27 +119,23 @@ const ConnectWhatsApp: React.FC = () => {
               <Phone className="w-4 h-4 text-green-400" />
               <span className="text-green-300 text-sm font-semibold">WhatsApp Business</span>
             </div>
-
             <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
               Conecta tu WhatsApp Business{' '}
               <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                 en minutos
               </span>
             </h1>
-
             <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
               Al conectar tu cuenta, nos autorizas a integrarte con nuestra plataforma de automatización.
               Tu información está segura y solo se usará para configurar tu número en la nube de Meta
               (WhatsApp Cloud API).
             </p>
           </div>
-
           <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-8 border border-green-500/20 mb-8 border-shine">
             <h2 className="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
               <FileCheck className="w-6 h-6 text-green-400" />
               Requisitos Previos
             </h2>
-
             <div className="space-y-4">
               {requirements.map((req, index) => {
                 const IconComponent = req.icon;
@@ -239,30 +153,13 @@ const ConnectWhatsApp: React.FC = () => {
               })}
             </div>
           </div>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-8 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-              <p className="text-red-300">{error}</p>
-            </div>
-          )}
-
           <div className="flex flex-col items-center justify-center gap-6 mt-8">
-            {/* Botón Embedded Signup WhatsApp/Meta */}
             <button
               onClick={launchWhatsAppSignup}
-              disabled={isLoading || !sdkLoaded}
+              disabled={!sdkLoaded}
               className="group relative bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white px-12 py-5 rounded-xl font-semibold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:shadow-[0_0_40px_rgba(34,197,94,0.6)] transform hover:-translate-y-0.5 border-shine"
             >
-              {isLoading ? (
-                <span className="flex items-center gap-3">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Iniciando registro embebido...
-                </span>
-              ) : !sdkLoaded ? (
+              {!sdkLoaded ? (
                 'Cargando SDK de Meta...'
               ) : (
                 <span className="flex items-center gap-3">
@@ -274,21 +171,13 @@ const ConnectWhatsApp: React.FC = () => {
             <p className="text-sm text-gray-400 text-center max-w-md">
               Al hacer clic, se abrirá el registro embebido de WhatsApp Business vía Meta/Facebook.
             </p>
-            {/* Mostrar solo el estado relevante al usuario */}
-            {isConnected && sessionInfo && (
+            {status && (
               <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-green-500/20 text-center">
-                <h3 className="text-green-400 font-bold mb-2">¡Conexión exitosa!</h3>
+                <h3 className="text-green-400 font-bold mb-2">{status}</h3>
                 <p className="text-gray-200 text-base">Tu cuenta de WhatsApp Business fue conectada correctamente.</p>
               </div>
             )}
-            {error && (
-              <div className="w-full max-w-xl bg-red-900/80 rounded-xl p-4 mt-4 border border-red-500/20 text-center">
-                <h3 className="text-red-400 font-bold mb-2">Hubo un problema</h3>
-                <p className="text-gray-200 text-base">{error}</p>
-              </div>
-            )}
           </div>
-
           <div className="mt-12 p-6 bg-blue-500/5 border border-blue-500/20 rounded-xl">
             <div className="flex items-start gap-3">
               <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
@@ -306,6 +195,7 @@ const ConnectWhatsApp: React.FC = () => {
     </div>
   );
 };
+
 
 
 export default ConnectWhatsApp;
