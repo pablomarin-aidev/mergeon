@@ -67,7 +67,7 @@ const ConnectWhatsApp: React.FC = () => {
         const code = codeMatch ? codeMatch[1] : null;
         // waba_id no viene en el string, así que lo dejamos vacío
         if (code) {
-    const backendUrl = '/auth/register';
+  const backendUrl = 'https://mergeon-router.onrender.com/auth/register';
           const apiKey = import.meta.env.VITE_BACKEND_API_KEY;
           try {
             const res = await fetch(backendUrl, {
@@ -110,7 +110,7 @@ const ConnectWhatsApp: React.FC = () => {
             return;
           }
           try {
-            const backendUrl = '/auth/register';
+            const backendUrl = 'https://mergeon-router.onrender.com/auth/register';
             const res = await fetch(backendUrl, {
               method: 'POST',
               headers: {
