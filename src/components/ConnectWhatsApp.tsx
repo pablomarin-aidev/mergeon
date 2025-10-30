@@ -74,7 +74,6 @@ const ConnectWhatsApp: React.FC = () => {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'api_key_auth': apiKey,
               },
               body: JSON.stringify({ code, waba_id: '' }),
             });
@@ -112,12 +111,10 @@ const ConnectWhatsApp: React.FC = () => {
           }
           try {
             const backendUrl = '/register';
-            const apiKey = import.meta.env.VITE_BACKEND_API_KEY;
             const res = await fetch(backendUrl, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'api_key_auth': apiKey,
               },
               body: JSON.stringify({ code, waba_id }),
             });
