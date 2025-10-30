@@ -307,5 +307,5 @@ const ConnectWhatsApp: React.FC = () => {
     </div>
   );
 };
-
+};
 export default ConnectWhatsApp;
