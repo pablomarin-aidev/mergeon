@@ -38,7 +38,6 @@ const ConnectWhatsApp: React.FC = () => {
   // Escuchar el evento 'message' para Embedded Signup
  useEffect(() => {
   const handleMessage = async (event: MessageEvent) => {
-    console.log('[Meta] Mensaje recibido:', event.origin);
     const allowedOrigins = [
       "https://www.facebook.com",
       "https://web.facebook.com",
@@ -47,113 +46,53 @@ const ConnectWhatsApp: React.FC = () => {
       "https://www.messenger.com",
       "https://www.mergeon.dev"
     ];
-    if (!allowedOrigins.includes(event.origin)) {
-      console.log('[Meta] Origen no permitido:', event.origin);
-      return;
-    }
+    if (!allowedOrigins.includes(event.origin)) return;
+
     let data: any;
     try {
       data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-      console.log('[Meta] Data parseada:', data?.type, data);
     } catch {
-      // Log del mensaje recibido aunque no sea JSON
-      console.log('[Meta] Mensaje no es JSON, contenido:', {
-        type: typeof event.data,
-        value: event.data
-      });
-      // Si el string contiene "code=", extraerlo y enviar POST a /register
-      if (typeof event.data === 'string' && event.data.includes('code=')) {
+      // Si no es JSON, puede ser el querystring con el code
+      if (typeof event.data === "string" && event.data.includes("code=")) {
         const codeMatch = event.data.match(/code=([^&]+)/);
         const code = codeMatch ? codeMatch[1] : null;
-        // waba_id no viene en el string, así que lo dejamos vacío
         if (code) {
-  const backendUrl = 'https://mergeon-router.onrender.com/auth/register';
-          const apiKey = import.meta.env.VITE_BACKEND_API_KEY;
+          console.log("[Meta] Code recibido:", code);
+          const backendUrl = "https://mergeon-router.onrender.com/auth/register";
           try {
             const res = await fetch(backendUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ code, waba_id: '' }),
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                code,
+                waba_id: sessionInfo?.waba_id || "" // 👈 usa el que ya se guardó
+              }),
             });
             const result = await res.json();
-            if (result.status === 'ok') {
+            if (result.status === "ok") {
+              alert("¡Conexión exitosa!");
               setIsConnected(true);
-              setError(null);
-              alert('¡Conexión exitosa!');
               window.close();
-            } else {
-              setError('Error en el registro: ' + (result.message || '')); 
-            }
-          } catch (err) {
-            setError('No se pudo enviar la activación al backend.');
+            } else setError("Error en el registro: " + (result.message || ""));
+          } catch {
+            setError("No se pudo enviar la activación al backend.");
           }
         }
       }
       return;
     }
-    if (data?.type !== "WA_EMBEDDED_SIGNUP") {
-      console.log('[Meta] Tipo de evento no es WA_EMBEDDED_SIGNUP:', data?.type);
-      return;
-    }
-    try {
-      switch (data.event) {
-        case "FINISH": {
-          console.log('[Meta] Evento FINISH recibido, objeto completo:', data);
-          setIsLoading(true);
-          const code = data.data?.code;
-          const waba_id = data.data?.waba_id;
-          if (!code || !waba_id) {
-            setError("Faltan datos en la respuesta de Meta.");
-            setIsLoading(false);
-            return;
-          }
-          try {
-            const backendUrl = 'https://mergeon-router.onrender.com/auth/register';
-            const res = await fetch(backendUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ code, waba_id }),
-            });
-            const result = await res.json();
-            if (result.status === 'ok') {
-              setIsConnected(true);
-              setError(null);
-              alert('¡Conexión exitosa!');
-              window.close();
-            } else {
-              setError('Error en el registro: ' + (result.message || ''));
-            }
-          } catch (err) {
-            setError('No se pudo enviar la activación al backend.');
-          } finally {
-            setIsLoading(false);
-          }
-          break;
-        }
-        case "CANCEL":
-          console.log('[Meta] Evento CANCEL recibido');
-          setError(`Registro cancelado en el paso: ${data.data?.current_step || "desconocido"}`);
-          break;
-        case "ERROR":
-          console.log('[Meta] Evento ERROR recibido');
-          setError(`Error durante el registro: ${data.data?.error_message || "desconocido"}`);
-          break;
-        default:
-          console.log('[Meta] Evento desconocido:', data.event);
-          break;
-      }
-    } catch (err) {
-      console.error('[Meta] ❌ Error procesando evento de Meta:', err);
+
+    // Si es un evento Embedded Signup normal
+    if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH") {
+      console.log("[Meta] WABA recibida:", data.data);
+      setSessionInfo({ waba_id: data.data?.waba_id });
     }
   };
 
   window.addEventListener("message", handleMessage);
   return () => window.removeEventListener("message", handleMessage);
-}, []);
+}, [sessionInfo]);
+
 
   // Callback de login de Facebook
   const fbLoginCallback = (response: any) => {
