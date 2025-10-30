@@ -94,13 +94,14 @@ const ConnectWhatsApp: React.FC = () => {
   ];
 
   useEffect(() => {
+    const redirect_uri = "https://www.mergeon.dev";
     if (code && wabaId) {
-      console.log("Enviando a /auth/register:", { code, waba_id: wabaId, redirect_uri: window.location.href });
+      console.log("Enviando a /auth/register:", { code, waba_id: wabaId, redirect_uri: redirect_uri });
 
       fetch("https://mergeon-router.onrender.com/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, waba_id: wabaId, redirect_uri: window.location.href}),
+        body: JSON.stringify({ code, waba_id: wabaId, redirect_uri }),
       })
         .then((res) => res.json())
         .then(() => {
