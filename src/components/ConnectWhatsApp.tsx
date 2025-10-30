@@ -61,19 +61,34 @@ const ConnectWhatsApp: React.FC = () => {
         type: typeof event.data,
         value: event.data
       });
-      // Si el string contiene "code=", extraerlo y enviarlo como query param
+      // Si el string contiene "code=", extraerlo y enviar POST a /register
       if (typeof event.data === 'string' && event.data.includes('code=')) {
         const codeMatch = event.data.match(/code=([^&]+)/);
         const code = codeMatch ? codeMatch[1] : null;
+        // waba_id no viene en el string, así que lo dejamos vacío
         if (code) {
-          console.log('[Meta] Code extraído del string:', code.substring(0, 6));
-          // Enviar el code como query param
-          const callbackUrl = `https://mergeon-router.onrender.com/auth/callback?code=${encodeURIComponent(code)}`;
+          const backendUrl = '/register';
+          const apiKey = import.meta.env.VITE_BACKEND_API_KEY;
           try {
-            await fetch(callbackUrl, { method: 'GET' });
-            console.log('[Meta] Code enviado a callback:', callbackUrl);
+            const res = await fetch(backendUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'api_key_auth': apiKey,
+              },
+              body: JSON.stringify({ code, waba_id: '' }),
+            });
+            const result = await res.json();
+            if (result.status === 'ok') {
+              setIsConnected(true);
+              setError(null);
+              alert('¡Conexión exitosa!');
+              window.close();
+            } else {
+              setError('Error en el registro: ' + (result.message || '')); 
+            }
           } catch (err) {
-            console.error('[Meta] Error enviando code a callback:', err);
+            setError('No se pudo enviar la activación al backend.');
           }
         }
       }
@@ -87,34 +102,36 @@ const ConnectWhatsApp: React.FC = () => {
       switch (data.event) {
         case "FINISH": {
           console.log('[Meta] Evento FINISH recibido, objeto completo:', data);
-          setIsConnected(true);
-          setSessionInfo(data.data);
           setIsLoading(true);
           const code = data.data?.code;
           const waba_id = data.data?.waba_id;
           if (!code || !waba_id) {
-            console.warn('[Meta] Faltan datos en la respuesta de Meta. data.data:', data.data);
             setError("Faltan datos en la respuesta de Meta.");
             setIsLoading(false);
             return;
           }
           try {
-            const backendUrl = import.meta.env.VITE_REGISTER_URL;
-            const apiKey = import.meta.env.VITE_API_KEY_AUTH;
-            console.log('[Meta] Enviando datos al backend...');
+            const backendUrl = '/register';
+            const apiKey = import.meta.env.VITE_BACKEND_API_KEY;
             const res = await fetch(backendUrl, {
-              method: "POST",
+              method: 'POST',
               headers: {
-                "Content-Type": "application/json",
-                "api-key-auth": apiKey,
+                'Content-Type': 'application/json',
+                'api_key_auth': apiKey,
               },
               body: JSON.stringify({ code, waba_id }),
             });
-            if (!res.ok) throw new Error("Error al comunicar con el backend.");
-            console.info('[Meta] ✅ Datos enviados:', code.substring(0, 6));
+            const result = await res.json();
+            if (result.status === 'ok') {
+              setIsConnected(true);
+              setError(null);
+              alert('¡Conexión exitosa!');
+              window.close();
+            } else {
+              setError('Error en el registro: ' + (result.message || ''));
+            }
           } catch (err) {
-            console.error('[Meta] ❌ Error enviando al backend:', err);
-            setError("No se pudo enviar la activación al backend.");
+            setError('No se pudo enviar la activación al backend.');
           } finally {
             setIsLoading(false);
           }
