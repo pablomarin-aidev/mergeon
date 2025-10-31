@@ -11,26 +11,27 @@ const ConnectWhatsApp: React.FC = () => {
   const [status, setStatus] = useState<string>('');
 
   const openWhatsAppOnboard = () => {
-    setStatus('Abriendo registro de WhatsApp Business...');
-    const width = 600;
-    const height = 800;
-    const left = window.screenX + (window.innerWidth - width) / 2;
-    const top = window.screenY + (window.innerHeight - height) / 2;
+  setStatus('Abriendo registro de WhatsApp Business...');
 
-    const popup = window.open(
-      WHATSAPP_ONBOARD_URL,
-      'wa_onboard',
-      `width=${width},height=${height},left=${left},top=${top}`
-    );
+  const width = window.screen.availWidth;
+  const height = window.screen.availHeight;
+  const left = 0;
+  const top = 0;
 
-    if (!popup) {
-      setStatus('Popup bloqueado. Permite popups y vuelve a intentarlo.');
-      console.error('Popup bloqueado');
-      return;
-    }
+  const popup = window.open(
+    WHATSAPP_ONBOARD_URL,
+    'wa_onboard',
+    `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+  );
 
-    setStatus('Ventana abierta. Completa el registro en el popup.');
-  };
+  if (!popup) {
+    setStatus('Popup bloqueado. Permite popups y vuelve a intentarlo.');
+    console.error('Popup bloqueado');
+    return;
+  }
+
+  setStatus('Ventana abierta. Completa el registro en el popup.');
+};
 
   const requirements = [
     { icon: Shield, text: 'Tener una cuenta de Facebook Business verificada' },
