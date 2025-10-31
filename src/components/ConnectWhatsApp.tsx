@@ -47,28 +47,35 @@ const ConnectWhatsApp: React.FC = () => {
     }
     setStatus('Iniciando registro con Meta...');
     console.log('🔹 Iniciando registro WhatsApp Business con FB.login');
-    window.FB.login((response: any) => {
-  console.log('✅ FB.login callback:', response);
-  if (response?.authResponse?.code) {
-    setWabaId(response.authResponse.code);
-    setStatus('¡Registro exitoso! Código recibido.');
-    fetch(BACKEND_REGISTER, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: response.authResponse.code }),
-    })
-      .then(r => r.json())
-      .then(d => console.log('📥 Registro backend exitoso:', d))
-      .catch(e => console.error('❌ Error enviando al backend:', e));
-  } else {
-    setStatus('No se recibió código de Meta.');
-  }
-}, {
-  config_id: '1526038345083724',
-  response_type: 'code',
-  override_default_response_type: true,
-  featureType: 'whatsapp_business_app_onboarding' // <-- esto es clave
-});
+
+    window.FB.login(
+      (response: any) => {
+        console.log('✅ FB.login callback:', response);
+        if (response?.authResponse?.code) {
+          setWabaId(response.authResponse.code);
+          setStatus('¡Registro exitoso! Código recibido.');
+
+          // Enviar al backend
+          fetch(BACKEND_REGISTER, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: response.authResponse.code }),
+          })
+            .then(r => r.json())
+            .then(d => console.log('📥 Registro backend exitoso:', d))
+            .catch(e => console.error('❌ Error enviando al backend:', e));
+        } else {
+          setStatus('No se recibió código de Meta.');
+        }
+      },
+      {
+        config_id: '1526038345083724',
+        response_type: 'code',
+        override_default_response_type: true,
+        featureType: 'whatsapp_business_app_onboarding', // <--- clave para coexistencia
+      },
+    );
+  };
 
   const requirements = [
     { icon: Shield, text: 'Tener una cuenta de Facebook Business verificada' },
