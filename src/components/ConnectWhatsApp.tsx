@@ -48,7 +48,7 @@ const ConnectWhatsApp: React.FC = () => {
 
   // Abrir popup para login
   const openAuthPopup = () => {
-    const scope = encodeURIComponent('pages_show_list,whatsapp_business_management');
+    const scope = encodeURIComponent('whatsapp_bussiness_messaging,whatsapp_business_management');
     const authUrl = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(
       REDIRECT_URI,
     )}&response_type=code&scope=${scope}`;
