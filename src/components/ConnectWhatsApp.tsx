@@ -24,6 +24,8 @@ const ConnectWhatsApp: React.FC = () => {
       } catch {
         data = event.data;
       }
+      console.log("[Meta Event] event.data:", event.data);
+      console.log("[Meta Event] parsed data:", data);
       if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH" && data.data?.waba_id) {
         setWabaId(data.data.waba_id);
       }
@@ -35,6 +37,7 @@ const ConnectWhatsApp: React.FC = () => {
 
   // Meta callback
   const fbLoginCallback = (response: any) => {
+    console.log("[Meta Callback] response:", response);
     if (response?.authResponse?.code) {
       setCode(response.authResponse.code);
     }
