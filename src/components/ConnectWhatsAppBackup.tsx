@@ -1,5 +1,5 @@
 // ConnectWhatsApp.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Phone, Shield, FileCheck } from 'lucide-react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
@@ -11,75 +11,81 @@ declare global {
 }
 
 const APP_ID = '1129979435402896';
+const REDIRECT_URI = 'https://mergeon-router.onrender.com/auth/callback';
 const BACKEND_REGISTER = 'https://mergeon-router.onrender.com/auth/register';
 
 const ConnectWhatsApp: React.FC = () => {
   const { elementRef, isVisible } = useScrollAnimation();
   const [wabaId, setWabaId] = useState<string | null>(null);
+  const [code, setCode] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
+  const popupRef = useRef<Window | null>(null);
 
-  // Cargar SDK de Facebook
+  // Escuchar mensajes de Embedded Signup o popup OAuth
   useEffect(() => {
-    if (window.FB) return;
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-    window.fbAsyncInit = function () {
-      console.log('FB SDK inicializado');
-      window.FB.init({
-        appId: APP_ID,
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v24.0',
-      });
+        if (data?.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH' && data.data?.waba_id) {
+          setWabaId(String(data.data.waba_id));
+          return;
+        }
+
+        if (data?.type === 'FB_OAUTH_CODE' && data.code && data.waba_id) {
+          setCode(String(data.code));
+          setWabaId(String(data.waba_id));
+          if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+        }
+      } catch {
+        // Ignorar mensajes malformados
+      }
     };
 
-    const script = document.createElement('script');
-    script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.async = true;
-    document.body.appendChild(script);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  // Abrir Embedded Signup
-  const openEmbeddedSignup = () => {
-    if (!window.FB) {
-      setStatus('FB SDK no cargado. Espera unos segundos y vuelve a intentar.');
-      console.error('FB SDK no cargado');
+  // Abrir popup para login
+  const openAuthPopup = () => {
+    const scope = encodeURIComponent('whatsapp_business_messaging,whatsapp_business_management,business_management');
+    const authUrl = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI,
+    )}&response_type=code&scope=${scope}`;
+
+    const width = 600;
+    const height = 800;
+    const left = window.screenX + (window.innerWidth - width) / 2;
+    const top = window.screenY + (window.innerHeight - height) / 2;
+    popupRef.current = window.open(authUrl, 'fb_oauth', `width=${width},height=${height},left=${left},top=${top}`);
+
+    if (!popupRef.current) {
+      setStatus('Popup bloqueado. Permite popups y vuelve a intentarlo.');
       return;
     }
 
-    console.log('🔹 Iniciando Embedded Signup...');
+    setStatus('Abriendo ventana de autenticación...');
+  };
 
-    const container = document.createElement('div');
-    container.id = 'waba-embed-container';
-    document.body.appendChild(container);
-
-    const embeddedSignup = new window.FB.EmbeddedSignup({
-      container: '#waba-embed-container',
-      app_id: APP_ID,
-      business_name: 'Nombre del cliente', // opcional: puedes pedirlo al usuario
-      onSuccess: (response: any) => {
-        console.log('✅ Embedded Signup terminado:', response);
-        setWabaId(response.waba_id);
-        setStatus('¡Registro exitoso! Tu WhatsApp Business está conectado.');
-
-        // Enviar al backend
-        fetch(BACKEND_REGISTER, {
+  // Cuando tenemos code y wabaId, enviar al backend
+  useEffect(() => {
+    const register = async () => {
+      if (!code || !wabaId) return;
+      setStatus('Registrando tu WhatsApp Business...');
+      try {
+        const res = await fetch(BACKEND_REGISTER, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(response),
-        })
-          .then(r => r.json())
-          .then(d => console.log('📥 Registro backend exitoso:', d))
-          .catch(e => console.error('❌ Error enviando al backend:', e));
-      },
-      onError: (err: any) => {
-        console.error('❌ Error en Embedded Signup:', err);
-        setStatus('Error conectando tu WABA. Reintenta.');
-      },
-    });
-
-    embeddedSignup.render();
-    setStatus('Abriendo Embedded Signup...');
-  };
+          body: JSON.stringify({ code, waba_id: wabaId, redirect_uri: REDIRECT_URI }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        setStatus('¡Registro exitoso! Tu cuenta está conectada.');
+      } catch (err: any) {
+        setStatus(`Error en registro: ${err.message || String(err)}`);
+      }
+    };
+    register();
+  }, [code, wabaId]);
 
   const requirements = [
     { icon: Shield, text: 'Tener una cuenta de Facebook Business verificada' },
@@ -125,7 +131,7 @@ const ConnectWhatsApp: React.FC = () => {
 
           <div className="flex flex-col items-center gap-6 mt-8">
             <button
-              onClick={openEmbeddedSignup}
+              onClick={openAuthPopup}
               className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-12 py-5 rounded-xl font-semibold text-lg"
             >
               <span className="flex items-center gap-3">
