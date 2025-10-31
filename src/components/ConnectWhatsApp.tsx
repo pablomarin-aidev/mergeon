@@ -38,47 +38,37 @@ const ConnectWhatsApp: React.FC = () => {
     document.body.appendChild(script);
   }, []);
 
-  // Abrir Embedded Signup
+  // Abrir registro WhatsApp Business con Meta
   const openEmbeddedSignup = () => {
-    if (!window.FB) {
-      setStatus('FB SDK no cargado. Espera unos segundos y vuelve a intentar.');
-      console.error('FB SDK no cargado');
+    if (!window.FB || typeof window.FB.login !== 'function') {
+      setStatus('FB SDK no cargado o login no disponible. Espera unos segundos y vuelve a intentar.');
+      console.error('FB SDK no cargado o login no disponible');
       return;
     }
-
-    console.log('🔹 Iniciando Embedded Signup...');
-
-    const container = document.createElement('div');
-    container.id = 'waba-embed-container';
-    document.body.appendChild(container);
-
-    const embeddedSignup = new window.FB.EmbeddedSignup({
-      container: '#waba-embed-container',
-      app_id: APP_ID,
-      business_name: 'Nombre del cliente', // opcional: puedes pedirlo al usuario
-      onSuccess: (response: any) => {
-        console.log('✅ Embedded Signup terminado:', response);
-        setWabaId(response.waba_id);
-        setStatus('¡Registro exitoso! Tu WhatsApp Business está conectado.');
-
+    setStatus('Iniciando registro con Meta...');
+    console.log('🔹 Iniciando registro WhatsApp Business con FB.login');
+    window.FB.login((response: any) => {
+      console.log('✅ FB.login callback:', response);
+      if (response?.authResponse?.code) {
+        setWabaId(response.authResponse.code);
+        setStatus('¡Registro exitoso! Código recibido.');
         // Enviar al backend
         fetch(BACKEND_REGISTER, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(response),
+          body: JSON.stringify({ code: response.authResponse.code }),
         })
           .then(r => r.json())
           .then(d => console.log('📥 Registro backend exitoso:', d))
           .catch(e => console.error('❌ Error enviando al backend:', e));
-      },
-      onError: (err: any) => {
-        console.error('❌ Error en Embedded Signup:', err);
-        setStatus('Error conectando tu WABA. Reintenta.');
-      },
+      } else {
+        setStatus('No se recibió código de Meta.');
+      }
+    }, {
+      config_id: '1526038345083724',
+      response_type: 'code',
+      override_default_response_type: true,
     });
-
-    embeddedSignup.render();
-    setStatus('Abriendo Embedded Signup...');
   };
 
   const requirements = [
