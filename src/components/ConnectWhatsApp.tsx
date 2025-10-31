@@ -1,80 +1,35 @@
 // ConnectWhatsApp.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Phone, Shield, FileCheck } from 'lucide-react';
 import { useScrollAnimation } from '../hooks/useScrollAnimation';
 
-declare global {
-  interface Window {
-    FB?: any;
-    fbAsyncInit?: any;
-  }
-}
-
-const APP_ID = '1129979435402896';
-const BACKEND_REGISTER = 'https://mergeon-router.onrender.com/auth/register';
+const WHATSAPP_ONBOARD_URL =
+  'https://business.facebook.com/messaging/whatsapp/onboard/?app_id=1129979435402896&config_id=1526038345083724&extras=%7B%22featureType%22%3A%22whatsapp_business_app_onboarding%22%2C%22sessionInfoVersion%22%3A%223%22%2C%22version%22%3A%22v3%22%7D';
 
 const ConnectWhatsApp: React.FC = () => {
   const { elementRef, isVisible } = useScrollAnimation();
-  const [wabaId, setWabaId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>('');
 
-  // Cargar SDK de Facebook
-  useEffect(() => {
-    if (window.FB) return;
+  const openWhatsAppOnboard = () => {
+    setStatus('Abriendo registro de WhatsApp Business...');
+    const width = 600;
+    const height = 800;
+    const left = window.screenX + (window.innerWidth - width) / 2;
+    const top = window.screenY + (window.innerHeight - height) / 2;
 
-    window.fbAsyncInit = function () {
-      console.log('FB SDK inicializado');
-      window.FB.init({
-        appId: APP_ID,
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v24.0',
-      });
-    };
+    const popup = window.open(
+      WHATSAPP_ONBOARD_URL,
+      'wa_onboard',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
 
-    const script = document.createElement('script');
-    script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.async = true;
-    document.body.appendChild(script);
-  }, []);
-
-  // Abrir registro WhatsApp Business con Meta
-  const openEmbeddedSignup = () => {
-    if (!window.FB || typeof window.FB.login !== 'function') {
-      setStatus('FB SDK no cargado o login no disponible. Espera unos segundos y vuelve a intentar.');
-      console.error('FB SDK no cargado o login no disponible');
+    if (!popup) {
+      setStatus('Popup bloqueado. Permite popups y vuelve a intentarlo.');
+      console.error('Popup bloqueado');
       return;
     }
-    setStatus('Iniciando registro con Meta...');
-    console.log('🔹 Iniciando registro WhatsApp Business con FB.login');
 
-    window.FB.login(
-      (response: any) => {
-        console.log('✅ FB.login callback:', response);
-        if (response?.authResponse?.code) {
-          setWabaId(response.authResponse.code);
-          setStatus('¡Registro exitoso! Código recibido.');
-
-          // Enviar al backend
-          fetch(BACKEND_REGISTER, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: response.authResponse.code }),
-          })
-            .then(r => r.json())
-            .then(d => console.log('📥 Registro backend exitoso:', d))
-            .catch(e => console.error('❌ Error enviando al backend:', e));
-        } else {
-          setStatus('No se recibió código de Meta.');
-        }
-      },
-      {
-        config_id: '1526038345083724',
-        response_type: 'code',
-        override_default_response_type: true,
-        featureType: 'whatsapp_business_app_onboarding', // <--- clave para coexistencia
-      },
-    );
+    setStatus('Ventana abierta. Completa el registro en el popup.');
   };
 
   const requirements = [
@@ -108,7 +63,10 @@ const ConnectWhatsApp: React.FC = () => {
               {requirements.map((req, i) => {
                 const Icon = req.icon;
                 return (
-                  <div key={i} className="flex items-start gap-4 p-4 bg-slate-800/50 rounded-xl border border-green-500/10">
+                  <div
+                    key={i}
+                    className="flex items-start gap-4 p-4 bg-slate-800/50 rounded-xl border border-green-500/10"
+                  >
                     <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center">
                       <Icon className="w-5 h-5 text-white" />
                     </div>
@@ -121,7 +79,7 @@ const ConnectWhatsApp: React.FC = () => {
 
           <div className="flex flex-col items-center gap-6 mt-8">
             <button
-              onClick={openEmbeddedSignup}
+              onClick={openWhatsAppOnboard}
               className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-12 py-5 rounded-xl font-semibold text-lg"
             >
               <span className="flex items-center gap-3">
