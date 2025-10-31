@@ -1,130 +1,103 @@
-import React, { useState, useEffect } from 'react';
+// ConnectWhatsApp.tsx
+import React, { useEffect, useState, useRef } from 'react';
 import { Phone, Shield, FileCheck } from 'lucide-react';
-// Declaración global para FB y fbAsyncInit
+import { useScrollAnimation } from '../hooks/useScrollAnimation';
+
 declare global {
   interface Window {
-    FB: any;
-    fbAsyncInit: any;
+    FB?: any;
+    fbAsyncInit?: any;
   }
 }
-import { useScrollAnimation } from '../hooks/useScrollAnimation';
+
+const APP_ID = '1129979435402896';
+const REDIRECT_URI = 'https://mergeon-router.onrender.com/auth/callback';
+const BACKEND_REGISTER = 'https://mergeon-router.onrender.com/auth/register';
 
 const ConnectWhatsApp: React.FC = () => {
   const { elementRef, isVisible } = useScrollAnimation();
-  const [code, setCode] = useState<string | null>(null);
   const [wabaId, setWabaId] = useState<string | null>(null);
-  const [sdkLoaded, setSdkLoaded] = useState(false);
-  const [status, setStatus] = useState<string>("");
-  // Escuchar el evento 'message' para Embedded Signup
+  const [code, setCode] = useState<string | null>(null);
+  const [status, setStatus] = useState<string>('');
+  const popupRef = useRef<Window | null>(null);
+
+  // Escuchar mensajes de Embedded Signup o popup OAuth
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      let data: any;
       try {
-        data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+        if (data?.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH' && data.data?.waba_id) {
+          setWabaId(String(data.data.waba_id));
+          return;
+        }
+
+        if (data?.type === 'FB_OAUTH_CODE' && data.code && data.waba_id) {
+          setCode(String(data.code));
+          setWabaId(String(data.waba_id));
+          if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+        }
       } catch {
-        data = event.data;
-      }
-      console.log("[Meta Event] event.data:", event.data);
-      console.log("[Meta Event] parsed data:", data);
-      if (data?.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH" && data.data?.waba_id) {
-        setWabaId(data.data.waba_id);
+        // Ignorar mensajes malformados
       }
     };
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  // Abrir popup para login
+  const openAuthPopup = () => {
+    const scope = encodeURIComponent('pages_show_list,whatsapp_business_management');
+    const authUrl = `https://www.facebook.com/v24.0/dialog/oauth?client_id=${APP_ID}&redirect_uri=${encodeURIComponent(
+      REDIRECT_URI,
+    )}&response_type=code&scope=${scope}`;
 
-  // Meta callback
-  const fbLoginCallback = (response: any) => {
-    console.log("[Meta Callback] response:", response);
-    if (response?.authResponse?.code) {
-      setCode(response.authResponse.code);
-    }
-  };
+    const width = 600;
+    const height = 800;
+    const left = window.screenX + (window.innerWidth - width) / 2;
+    const top = window.screenY + (window.innerHeight - height) / 2;
+    popupRef.current = window.open(authUrl, 'fb_oauth', `width=${width},height=${height},left=${left},top=${top}`);
 
-  const launchWhatsAppSignup = () => {
-    if (!sdkLoaded || !window.FB) return;
-    window.FB.login(fbLoginCallback, {
-      config_id: "1526038345083724",
-      response_type: "code",
-      override_default_response_type: true,
-    });
-  };
-
-  useEffect(() => {
-    if (document.getElementById('facebook-jssdk')) {
-      setSdkLoaded(true);
+    if (!popupRef.current) {
+      setStatus('Popup bloqueado. Permite popups y vuelve a intentarlo.');
       return;
     }
-    window.fbAsyncInit = function() {
-      window.FB.init({
-        appId: '1129979435402896',
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v24.0',
-      });
-      setSdkLoaded(true);
-    };
-    const script = document.createElement('script');
-    script.id = 'facebook-jssdk';
-    script.src = 'https://connect.facebook.net/en_US/sdk.js';
-    script.async = true;
-    script.defer = true;
-    script.crossOrigin = 'anonymous';
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
+
+    setStatus('Abriendo ventana de autenticación...');
+  };
+
+  // Cuando tenemos code y wabaId, enviar al backend
+  useEffect(() => {
+    const register = async () => {
+      if (!code || !wabaId) return;
+      setStatus('Registrando tu WhatsApp Business...');
+      try {
+        const res = await fetch(BACKEND_REGISTER, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, waba_id: wabaId, redirect_uri: REDIRECT_URI }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        setStatus('¡Registro exitoso! Tu cuenta está conectada.');
+      } catch (err: any) {
+        setStatus(`Error en registro: ${err.message || String(err)}`);
       }
     };
-  }, []);
-
+    register();
+  }, [code, wabaId]);
 
   const requirements = [
-    {
-      icon: Shield,
-      text: 'Tener una cuenta de Facebook Business verificada',
-    },
-    {
-      icon: Phone,
-      text: 'Tener un número de WhatsApp disponible para conectar',
-    },
-    {
-      icon: FileCheck,
-      text: 'Aceptar los permisos de Meta durante el proceso',
-    },
+    { icon: Shield, text: 'Tener una cuenta de Facebook Business verificada' },
+    { icon: Phone, text: 'Tener un número de WhatsApp disponible para conectar' },
+    { icon: FileCheck, text: 'Aceptar los permisos de Meta durante el proceso' },
   ];
-
-  useEffect(() => {
-    const redirect_uri = "https://www.mergeon.dev/";
-    if (code && wabaId) {
-      console.log("Enviando a /auth/register:", { code, waba_id: wabaId, redirect_uri: redirect_uri });
-
-      fetch("https://mergeon-router.onrender.com/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, waba_id: wabaId, redirect_uri }),
-      })
-        .then((res) => res.json())
-        .then(() => {
-          setStatus("¡Registro exitoso!");
-        })
-        .catch(() => {
-          setStatus("Error en el registro");
-        });
-    }
-  }, [code, wabaId]);
 
   return (
     <div className="min-h-screen bg-slate-950 pt-24 pb-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div ref={elementRef} className={`scroll-reveal ${isVisible ? 'visible' : ''}`}>
           <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full mb-6">
-              <Phone className="w-4 h-4 text-green-400" />
-              <span className="text-green-300 text-sm font-semibold">WhatsApp Business</span>
-            </div>
             <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 leading-tight">
               Conecta tu WhatsApp Business{' '}
               <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
@@ -133,25 +106,21 @@ const ConnectWhatsApp: React.FC = () => {
             </h1>
             <p className="text-lg text-gray-300 max-w-2xl mx-auto leading-relaxed">
               Al conectar tu cuenta, nos autorizas a integrarte con nuestra plataforma de automatización.
-              Tu información está segura y solo se usará para configurar tu número en la nube de Meta
-              (WhatsApp Cloud API).
             </p>
           </div>
-          <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl p-8 border border-green-500/20 mb-8 border-shine">
+
+          <div className="bg-slate-900/50 rounded-2xl p-8 mb-8">
             <h2 className="text-2xl font-semibold text-white mb-6 flex items-center gap-3">
               <FileCheck className="w-6 h-6 text-green-400" />
               Requisitos Previos
             </h2>
             <div className="space-y-4">
-              {requirements.map((req, index) => {
-                const IconComponent = req.icon;
+              {requirements.map((req, i) => {
+                const Icon = req.icon;
                 return (
-                  <div
-                    key={index}
-                    className="flex items-start gap-4 p-4 bg-slate-800/50 rounded-xl border border-green-500/10 hover:border-green-500/30 transition-all duration-300"
-                  >
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <IconComponent className="w-5 h-5 text-white" />
+                  <div key={i} className="flex items-start gap-4 p-4 bg-slate-800/50 rounded-xl border border-green-500/10">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-white" />
                     </div>
                     <p className="text-gray-300 pt-2">{req.text}</p>
                   </div>
@@ -159,49 +128,27 @@ const ConnectWhatsApp: React.FC = () => {
               })}
             </div>
           </div>
-          <div className="flex flex-col items-center justify-center gap-6 mt-8">
+
+          <div className="flex flex-col items-center gap-6 mt-8">
             <button
-              onClick={launchWhatsAppSignup}
-              disabled={!sdkLoaded}
-              className="group relative bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white px-12 py-5 rounded-xl font-semibold text-lg transition-all duration-300 shadow-[0_0_30px_rgba(34,197,94,0.5)] hover:shadow-[0_0_40px_rgba(34,197,94,0.6)] transform hover:-translate-y-0.5 border-shine"
+              onClick={openAuthPopup}
+              className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-12 py-5 rounded-xl font-semibold text-lg"
             >
-              {!sdkLoaded ? (
-                'Cargando SDK de Meta...'
-              ) : (
-                <span className="flex items-center gap-3">
-                  <Phone className="w-5 h-5" />
-                  Registrar WhatsApp Business
-                </span>
-              )}
+              <span className="flex items-center gap-3">
+                <Phone className="w-5 h-5" />
+                Registrar WhatsApp Business
+              </span>
             </button>
-            <p className="text-sm text-gray-400 text-center max-w-md">
-              Al hacer clic, se abrirá el registro embebido de WhatsApp Business vía Meta/Facebook.
-            </p>
             {status && (
-              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 border border-green-500/20 text-center">
+              <div className="w-full max-w-xl bg-slate-900/80 rounded-xl p-4 mt-4 text-center border border-green-500/20">
                 <h3 className="text-green-400 font-bold mb-2">{status}</h3>
-                <p className="text-gray-200 text-base">Tu cuenta de WhatsApp Business fue conectada correctamente.</p>
               </div>
             )}
-          </div>
-          <div className="mt-12 p-6 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-            <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-white font-semibold mb-2">Tu información está protegida</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">
-                  Utilizamos las API oficiales de Meta para garantizar la seguridad de tus datos.
-                  Nunca almacenamos información sensible y cumplimos con todas las políticas de privacidad.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-
 
 export default ConnectWhatsApp;
